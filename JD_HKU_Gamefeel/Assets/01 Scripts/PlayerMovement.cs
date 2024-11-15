@@ -14,7 +14,9 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float acceleration;
     [SerializeField] float DashForce;
     [SerializeField] float pushDownStrenght;
-    [SerializeField] bool  grounded;
+    [SerializeField] bool grounded;
+    [SerializeField] float slidingGravity;
+    [SerializeField] float airDragMultiplier;
     [Header("References Movement")]
     [SerializeField] LayerMask jumpMask;
     [SerializeField] float floorRayLength;
@@ -23,6 +25,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float wallJumpCost;
     [SerializeField] float jumpCost;
     [SerializeField] float grabCost;
+
     [Header("public data")]
     //Public data.
     public bool regensEnergy;
@@ -38,6 +41,8 @@ public class PlayerMovement : MonoBehaviour
     private bool isFalling;
     private bool isWallJumping;
     private bool isDashing;
+    private bool isSlidingDown;
+    private float normalGravity = 3f;
     enum State
     {
         General,
@@ -47,7 +52,8 @@ public class PlayerMovement : MonoBehaviour
         Walljumping,
         Falling,
         Dashing,
-        Grabbing
+        Grabbing,
+        SlidingDown
     }
     [SerializeField] private State currentState;
 
@@ -67,7 +73,7 @@ public class PlayerMovement : MonoBehaviour
         MovePlayer(); // Move the player accordingly.
         StateEffects();
     }
-    
+
     #region input
     private void GetInput()
     {
@@ -84,13 +90,13 @@ public class PlayerMovement : MonoBehaviour
         {
             Dash();
         }
-        if (Input.GetKey(KeyCode.LeftControl))
+        if (Input.GetKey(KeyCode.C))
         {
             Grab();
         }
-        if (Input.GetKeyUp(KeyCode.LeftControl))
+        if (Input.GetKeyUp(KeyCode.C))
         {
-            rb.gravityScale = 3;
+            ResetGravityScale();
         }
     }
 
@@ -104,6 +110,7 @@ public class PlayerMovement : MonoBehaviour
         if (!grounded && isJumping) currentState = State.Jumping;
         if (!grounded && !isJumping && isWallJumping) currentState = State.Walljumping;
         if (!grounded && !isJumping && rb.velocity.y < 0) currentState = State.Falling;
+        if (CanGrab() && !isJumping && !isWallJumping && !grounded && rb.velocity.y < 0) currentState = State.SlidingDown; isSlidingDown = true;
     }
 
     private void StateEffects()
@@ -135,7 +142,12 @@ public class PlayerMovement : MonoBehaviour
             case State.Grabbing:
                 regensEnergy = false;
                 break;
+            case State.SlidingDown:
+                StartSlidingDown();
+                regensEnergy = true;
+                break;
         }
+        if (currentState != State.SlidingDown) ResetGravityScale();
     }
 
     #endregion
@@ -151,22 +163,29 @@ public class PlayerMovement : MonoBehaviour
         {
             //check on slope? normal van slope pakken
             Vector2 movementVector = GetSlopeAngle();
-            Debug.Log(movementVector);
-            //if (movementVector.x == 1)
-            //{
-                float targetSpeed = inputHorizontal * maxHorizontalSpeed;
-                //float speedDif = targetSpeed - rb.velocity.x; // how big is the difference
+            if (grounded)
+            {
+                float targetSpeed = inputHorizontal * maxHorizontalSpeed ;
 
                 float newSpeed = Mathf.MoveTowards(rb.velocity.x, targetSpeed, acceleration * Time.deltaTime);
 
                 rb.velocity = new Vector2(newSpeed, rb.velocity.y);
-            
+            }
+            else if (!grounded)
+            {
+                float targetSpeed = inputHorizontal * maxHorizontalSpeed;
+
+                float newSpeed = Mathf.MoveTowards(rb.velocity.x, targetSpeed, acceleration * Time.deltaTime);
+
+                rb.velocity = new Vector2(newSpeed, rb.velocity.y);
+            }
+
             if (movementVector.x != 0) //On a slope
             {
                 if (grounded)
                 {
-                    Debug.Log(" I'm on a slope: ");
-                    Vector2 pushDownVector = new Vector2(movementVector.x *-1, movementVector.y *-1);
+                    //Debug.Log(" I'm on a slope: ");
+                    Vector2 pushDownVector = new Vector2(movementVector.x * -1, movementVector.y * -1);
                     rb.AddForce(pushDownVector * pushDownStrenght);
                 }
             }
@@ -276,6 +295,19 @@ public class PlayerMovement : MonoBehaviour
                 //Debug.Log(lastFriction);
             }
         } //otherwise don't do anything.
+    }
+
+    private void ResetGravityScale()
+    {
+        if (rb.gravityScale != normalGravity)
+        {
+            rb.gravityScale = normalGravity;
+        }
+    }
+    private void StartSlidingDown()
+    {
+        //Change the rb.gravityscale down
+        if (rb.gravityScale != slidingGravity) rb.gravityScale = slidingGravity;
     }
 
     #endregion

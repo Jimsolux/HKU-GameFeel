@@ -954,8 +954,8 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1367545316}
-  - {fileID: 1981648297}
   - {fileID: 769184988}
+  - {fileID: 1981648297}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &519420028
@@ -1110,7 +1110,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   objectsToFollow:
   - {fileID: 969049563}
-  - {fileID: 1538427168}
 --- !u!1 &603926169
 GameObject:
   m_ObjectHideFlags: 0
@@ -1640,19 +1639,21 @@ MonoBehaviour:
   energy: {fileID: 0}
   moveSpeed: 1300
   jumpForce: 1100
-  wallJumpForce: 1700
+  wallJumpForce: 1800
   maxHorizontalSpeed: 8
   acceleration: 50
   DashForce: 2000
   pushDownStrenght: 1000
   grounded: 0
+  slidingGravity: 0.8
+  airDragMultiplier: 0.4
   jumpMask:
     serializedVersion: 2
     m_Bits: 64
   floorRayLength: 1.2
   dashCost: 50
-  wallJumpCost: 10
-  jumpCost: 10
+  wallJumpCost: 1
+  jumpCost: 1
   grabCost: 50
   regensEnergy: 0
   physicsMaterial: {fileID: 6200000, guid: 08beca42200433e408ac09b3b75a4f67, type: 2}
@@ -2239,8 +2240,8 @@ Transform:
   m_GameObject: {fileID: 1367545313}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.22179963, y: -16.6377, z: 0.46}
-  m_LocalScale: {x: 34.275726, y: 15.0736265, z: 1.1891}
+  m_LocalPosition: {x: -0, y: -19.1309, z: 0}
+  m_LocalScale: {x: 34.275726, y: 20.059982, z: 1.1891}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 496349329}
@@ -3269,8 +3270,8 @@ Transform:
   m_GameObject: {fileID: 1981648294}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.16849999, y: -14.3253, z: 0.46}
-  m_LocalScale: {x: 44.065983, y: 10.44893, z: 1.1891}
+  m_LocalPosition: {x: -0.16849999, y: -16.0536, z: 0.46}
+  m_LocalScale: {x: 44.065983, y: 13.9054365, z: 1.1891}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 496349329}

@@ -8,6 +8,7 @@ public class Energy : MonoBehaviour
     [SerializeField] private float maxEnergy;
     [SerializeField] private float restoreTime;
     [SerializeField] private float restoreAmount;
+    private bool recentlyUsedEnergy;
     PlayerMovement pm;
     private void Awake()
     {
@@ -49,7 +50,7 @@ public class Energy : MonoBehaviour
             {
                 GainEnergy(restoreAmount);
             }
-            else if(energy >= maxEnergy)
+            else if (energy >= maxEnergy)
             {
                 CancelInvoke();
             }
@@ -67,10 +68,10 @@ public class Energy : MonoBehaviour
             oneCoroutineIsActive = false;
         }
     }
+
     #region visualisation
 
     [SerializeField] Image energyImage;
-
     private void UpdateVisualEnergy()
     {
         if (energyImage != null)
@@ -78,13 +79,44 @@ public class Energy : MonoBehaviour
             energyImage.fillAmount = energy / 100;
 
             float visibilityFloat = energyImage.fillAmount * -1 + 1;
-            Color color = energyImage.color;
+            //if oneCoroutineIsActive (then its busy restoring) Start a coroutine ONCE to start letting stamina bar disappear after 2 seconds.
+            StartCoroutine(IHaveRecentlyUsedEnergy());
+        }
+    }
+
+    private IEnumerator StartChangingStaminaOpacity()
+    {
+        yield return new WaitForSeconds(1);
+        Color color = energyImage.color;
+        float visibilityFloat = 255;
+        color.a = visibilityFloat;
+        energyImage.color = color;
+
+        while (visibilityFloat > 0)
+        {
+            visibilityFloat = Mathf.Lerp(255, 0, 1);
             color.a = visibilityFloat;
             energyImage.color = color;
         }
     }
-
     #endregion
+
+    private bool rueRunning;
+    private IEnumerator IHaveRecentlyUsedEnergy()
+    {
+        if (rueRunning)//If this coroutine is already running
+        {
+            StopCoroutine(IHaveRecentlyUsedEnergy());//Stop this routine
+            rueRunning = false; //it is no longer running
+            StartCoroutine(IHaveRecentlyUsedEnergy());//And start it again.
+        }
+        Debug.Log("I am Waiting 1 second and then starting to change opacity.");
+        rueRunning = true;
+        yield return new WaitForSeconds(1);
+        //Start Changing Opacity.
+        StartCoroutine(StartChangingStaminaOpacity());
+        rueRunning = false;
+    }
 }
 
 
