@@ -20,6 +20,7 @@ public class PlayerMovement : MonoBehaviour
     [Header("References Movement")]
     [SerializeField] LayerMask jumpMask;
     [SerializeField] float floorRayLength;
+    [SerializeField] float jumpShortForce;
     [Header("Costs")]
     [SerializeField] float dashCost;
     [SerializeField] float wallJumpCost;
@@ -27,14 +28,16 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float grabCost;
 
     [Header("public data")]
+    [SerializeField] GameObject spriteObject;
     //Public data.
     public bool regensEnergy;
     public PhysicsMaterial2D physicsMaterial;
     //private data
-    float inputHorizontal;
+    public float inputHorizontal;
     float inputVertical;
     Vector3 inputVector;
     Vector3 fullInputVector;
+    private bool facingRight;
 
     [Header("CurrentState")]
     private bool isJumping;
@@ -43,7 +46,7 @@ public class PlayerMovement : MonoBehaviour
     private bool isDashing;
     private bool isSlidingDown;
     private float normalGravity = 3f;
-    enum State
+    public enum State
     {
         General,
         Idle,
@@ -55,7 +58,7 @@ public class PlayerMovement : MonoBehaviour
         Grabbing,
         SlidingDown
     }
-    [SerializeField] private State currentState;
+    [SerializeField] public State currentState;
 
 
 
@@ -63,6 +66,7 @@ public class PlayerMovement : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         energy = GetComponent<Energy>();
+        facingRight = true;
     }
     private void Update()
     {
@@ -70,14 +74,24 @@ public class PlayerMovement : MonoBehaviour
         GetInput();// Get all player Input
         CheckIfGrounded(); // Check player body conditions
         StateHandler(); //Switch between States depending on situation
+        Flipping(); //Flip sprite
         MovePlayer(); // Move the player accordingly.
         StateEffects();
+    }
+
+    private void FixedUpdate()
+    {
+
     }
 
     #region input
     private void GetInput()
     {
         inputHorizontal = Input.GetAxisRaw("Horizontal");
+        if (!grounded)
+        {
+            inputHorizontal *= airDragMultiplier;
+        }
         inputVertical = Input.GetAxisRaw("Vertical");
         fullInputVector = new Vector3(inputHorizontal, inputVertical);
         inputVector = new Vector3(inputHorizontal, 0);
@@ -85,6 +99,13 @@ public class PlayerMovement : MonoBehaviour
         {
             //Debug.Log("Spacebar registered, should jump xxx");
             Jump();
+        }
+        if (Input.GetKeyUp(KeyCode.Space))
+        {
+            if (rb.velocity.y > 0)//going up
+            {
+                rb.AddForce((1f - 0.6f) * jumpShortForce * rb.velocity.y * Vector2.down, ForceMode2D.Impulse);
+            }
         }
         if (Input.GetKeyDown(KeyCode.LeftShift))
         {
@@ -98,15 +119,71 @@ public class PlayerMovement : MonoBehaviour
         {
             ResetGravityScale();
         }
+        //Object flipping
+
     }
 
+    #endregion
+
+    #region animation
+    private void Flipping()
+    {
+        if (currentState == State.SlidingDown || currentState == State.Grabbing)
+        {
+            if (wallDir < 0 && inputHorizontal < 0)//wall on left - face right.
+            {
+                if (!facingRight)
+                {
+                    Vector3 transsform = spriteObject.transform.localScale;
+                    transsform.x *= -1;
+                    spriteObject.transform.localScale = transsform;
+                }
+                facingRight = true;
+            }
+            if (wallDir > 0 && inputHorizontal > 0)//wall on right - face left.
+            {
+                if (facingRight)
+                {
+                    Vector3 transsform = spriteObject.transform.localScale;
+                    transsform.x *= -1;
+                    spriteObject.transform.localScale = transsform;
+                }
+                facingRight = false;
+            }
+        }
+        else
+        {
+            if (inputHorizontal > 0)
+            {
+                if (!facingRight)
+                {
+                    Vector3 transsform = spriteObject.transform.localScale;
+                    transsform.x *= -1;
+                    spriteObject.transform.localScale = transsform;
+                }
+                facingRight = true;
+            }
+            if (inputHorizontal < 0)
+            {
+                if (facingRight)
+                {
+                    Vector3 transsform = spriteObject.transform.localScale;
+                    transsform.x *= -1;
+                    spriteObject.transform.localScale = transsform;
+                }
+                facingRight = false;
+            }
+
+        }
+
+    }
     #endregion
 
     #region States
     private void StateHandler() //manages which state should be active.
     {
         if (grounded && rb.velocity.x == 0) currentState = State.Idle;
-        if (grounded && rb.velocity.x != 0) currentState = State.Walking;
+        if (grounded && rb.velocity.x != 0 && inputHorizontal != 0) currentState = State.Walking;
         if (!grounded && isJumping) currentState = State.Jumping;
         if (!grounded && !isJumping && isWallJumping) currentState = State.Walljumping;
         if (!grounded && !isJumping && rb.velocity.y < 0) currentState = State.Falling;
@@ -163,22 +240,32 @@ public class PlayerMovement : MonoBehaviour
         {
             //check on slope? normal van slope pakken
             Vector2 movementVector = GetSlopeAngle();
+
             if (grounded)
             {
-                float targetSpeed = inputHorizontal * maxHorizontalSpeed ;
-
-                float newSpeed = Mathf.MoveTowards(rb.velocity.x, targetSpeed, acceleration * Time.deltaTime);
+                float targetSpeed = inputHorizontal * maxHorizontalSpeed;
+                float speedDifference = targetSpeed - rb.velocity.x;
+                speedDifference /= 3;
+                if (speedDifference < 0) speedDifference *= -1;//Always a positive value.
+                if (movementVector.x != 0) //On a slope
+                {
+                    speedDifference = Mathf.Min(speedDifference, 2);//low speed multiplier on slopes when turning around.
+                }
+                float newSpeed = Mathf.MoveTowards(rb.velocity.x, targetSpeed, acceleration * speedDifference * Time.deltaTime);
 
                 rb.velocity = new Vector2(newSpeed, rb.velocity.y);
             }
             else if (!grounded)
             {
                 float targetSpeed = inputHorizontal * maxHorizontalSpeed;
+                float speedDifference = Mathf.Abs(targetSpeed - rb.velocity.x);
+                if (speedDifference < 0) speedDifference *= -1;//Always a positive value.
 
-                float newSpeed = Mathf.MoveTowards(rb.velocity.x, targetSpeed, acceleration * Time.deltaTime);
+                float newSpeed = Mathf.MoveTowards(rb.velocity.x, targetSpeed, acceleration / 2 * Time.deltaTime);
 
                 rb.velocity = new Vector2(newSpeed, rb.velocity.y);
             }
+
 
             if (movementVector.x != 0) //On a slope
             {
@@ -205,7 +292,7 @@ public class PlayerMovement : MonoBehaviour
 
     private Vector2 GetSlopeAngle()
     {
-        RaycastHit2D rayHit = Physics2D.Raycast(transform.position, -transform.up, floorRayLength, jumpMask);
+        RaycastHit2D rayHit = Physics2D.Raycast(transform.position, -transform.up, floorRayLength + 1f, jumpMask);
         Vector2 normal = rayHit.normal;
         Vector2 movementNormal = new Vector2(normal.y, -normal.x).normalized;
 
@@ -262,7 +349,7 @@ public class PlayerMovement : MonoBehaviour
     {
         if (energy.energy > wallJumpCost)
         {
-            Vector2 jumpDirectionVector = (transform.up + transform.right * wallDir * -1) / 2;
+            Vector2 jumpDirectionVector = ((transform.up * 2) + transform.right * wallDir * -1) / 3;
             rb.AddForce(jumpDirectionVector * wallJumpForce, ForceMode2D.Impulse);
             energy.UseEnergy(wallJumpCost);
             //StartCoroutine(IsUsingEnergyAbility());

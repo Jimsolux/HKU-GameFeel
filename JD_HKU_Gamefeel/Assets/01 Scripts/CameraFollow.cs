@@ -4,11 +4,12 @@ using UnityEngine;
 
 public class CameraFollow : MonoBehaviour
 {
-    [SerializeField] private List<GameObject> objectsToFollow = new List<GameObject>();
+    [SerializeField] public List<GameObject> objectsToFollow = new List<GameObject>();
+    [SerializeField] private float scrollSpeed;
 
     private void FixedUpdate()
     {
-        transform.position = Vector3.Lerp(transform.position, CalculateAveragePosition(), 1f * Time.deltaTime);
+        transform.position = Vector3.Lerp(transform.position, CalculateAveragePosition(), scrollSpeed * Time.deltaTime);
         //Camera.main.transform.position = CalculateAveragePosition();
     }
 

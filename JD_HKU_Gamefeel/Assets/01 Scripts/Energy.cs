@@ -88,16 +88,17 @@ public class Energy : MonoBehaviour
     {
         yield return new WaitForSeconds(1);
         Color color = energyImage.color;
-        float visibilityFloat = 255;
+        float visibilityFloat = energyImage.fillAmount * -1 + 1;
+        
         color.a = visibilityFloat;
         energyImage.color = color;
 
-        while (visibilityFloat > 0)
-        {
-            visibilityFloat = Mathf.Lerp(255, 0, 1);
-            color.a = visibilityFloat;
-            energyImage.color = color;
-        }
+        //while (visibilityFloat > 0)
+        //{
+        //    visibilityFloat = Mathf.Lerp(255, 0, 1);
+        //    color.a = visibilityFloat;
+        //    energyImage.color = color;
+        //}
     }
     #endregion
 
@@ -110,7 +111,7 @@ public class Energy : MonoBehaviour
             rueRunning = false; //it is no longer running
             StartCoroutine(IHaveRecentlyUsedEnergy());//And start it again.
         }
-        Debug.Log("I am Waiting 1 second and then starting to change opacity.");
+        //Debug.Log("I am Waiting 1 second and then starting to change opacity.");
         rueRunning = true;
         yield return new WaitForSeconds(1);
         //Start Changing Opacity.
