@@ -6,21 +6,25 @@ public class PlayerAnim : MonoBehaviour
     Animator animator;
     PlayerMovement.State newState;
     PlayerMovement.State lastState;
+    AnimateSwordMoveSlash swordSlashScript;
 
     private int jumpHash;
     private int runningHash;
     private int idleHash;
     private int fallingHash;
+    private int attackHash;
 
     private void Awake()
     {
         playerMovement = GetComponent<PlayerMovement>();
         animator = GetComponentInChildren<Animator>();
+        swordSlashScript = GetComponent<AnimateSwordMoveSlash>();
 
         jumpHash = Animator.StringToHash("Anim_Jump");
         runningHash = Animator.StringToHash("Anim_Run");
         idleHash = Animator.StringToHash("Anim_Idle");
         fallingHash = Animator.StringToHash("Anim_Fall");
+        attackHash = Animator.StringToHash("Anim_Attack2");
     }
     private void FixedUpdate()
     {
@@ -59,6 +63,11 @@ public class PlayerAnim : MonoBehaviour
                     break;
                 case PlayerMovement.State.SlidingDown:
                     PlayAnimation(fallingHash);
+                    break;
+                case PlayerMovement.State.Attacking:
+                    PlayAnimation(attackHash);
+                    //Play the sword animation.
+                    swordSlashScript.MoveSword();
                     break;
             }
             //Check the current state and set the right bool true.

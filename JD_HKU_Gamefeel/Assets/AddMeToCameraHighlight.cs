@@ -7,6 +7,7 @@ public class AddMeToCameraHighlight : MonoBehaviour
     [SerializeField] CameraFollow cameraFollow;
     [SerializeField] GameObject player;
     [SerializeField] bool hasShown = false;
+    [SerializeField] float distanceToAdd;
 
     private void Awake()
     {
@@ -15,23 +16,35 @@ public class AddMeToCameraHighlight : MonoBehaviour
     }
     private void FixedUpdate()
     {
-        AddMeToHighlights();
+        if(!hasShown) AddMeToHighlights();
+    }
+
+    private void OnDisable()
+    {
+        if (cameraFollow.objectsToFollow.Contains(this.gameObject))
+        {
+            cameraFollow.objectsToFollow.Remove(this.gameObject);
+            //Debug.Log("Removed.");
+        }
     }
 
     private void AddMeToHighlights()
     {
         //Debug.Log(Vector2.Distance(player.transform.position, this.transform.position));
-        if(Vector2.Distance(player.transform.position, this.transform.position) < 25 && !hasShown)
+        if(Vector2.Distance(player.transform.position, this.transform.position) < distanceToAdd && !hasShown)
         {
-            Debug.Log("Close enough!");
+            //Debug.Log("Close enough!");
             if (!cameraFollow.objectsToFollow.Contains(this.gameObject))
             {
                 cameraFollow.objectsToFollow.Add(this.gameObject);
                 hasShown = true;
-                Debug.Log("Added me to list!!");
+                //Debug.Log("Added me to list!!");
 
             }
-            StartCoroutine(RemoveMeFromHighLights());
+            if(this.gameObject != null)
+            {
+                StartCoroutine(RemoveMeFromHighLights());
+            }
         }
 
     }
@@ -42,7 +55,7 @@ public class AddMeToCameraHighlight : MonoBehaviour
         if (cameraFollow.objectsToFollow.Contains(this.gameObject))
         {
             cameraFollow.objectsToFollow.Remove(this.gameObject);
-            Debug.Log("Removed.");
+            //Debug.Log("Removed.");
         }
     }
 }

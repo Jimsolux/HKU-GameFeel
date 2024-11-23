@@ -45,6 +45,8 @@ public class PlayerMovement : MonoBehaviour
     private bool isWallJumping;
     private bool isDashing;
     private bool isSlidingDown;
+    private bool isAttacking;
+    [SerializeField] private bool isGrabbing;
     private float normalGravity = 3f;
     public enum State
     {
@@ -56,7 +58,8 @@ public class PlayerMovement : MonoBehaviour
         Falling,
         Dashing,
         Grabbing,
-        SlidingDown
+        SlidingDown,
+        Attacking
     }
     [SerializeField] public State currentState;
 
@@ -111,13 +114,19 @@ public class PlayerMovement : MonoBehaviour
         {
             Dash();
         }
-        if (Input.GetKey(KeyCode.C))
+        if (Input.GetKey(KeyCode.C) || Input.GetMouseButton(1))
         {
             Grab();
         }
-        if (Input.GetKeyUp(KeyCode.C))
+        if (Input.GetKeyUp(KeyCode.C) || Input.GetMouseButtonUp(1))
         {
             ResetGravityScale();
+            isGrabbing = false; glove1.SetActive(false); glove2.SetActive(false);
+            //Debug.Log("Not grab cus keyUp");
+        }
+        if (Input.GetMouseButtonDown(0)) // mouse L?
+        {
+            StartCoroutine(IAmAttacking());
         }
         //Object flipping
 
@@ -137,6 +146,7 @@ public class PlayerMovement : MonoBehaviour
                     Vector3 transsform = spriteObject.transform.localScale;
                     transsform.x *= -1;
                     spriteObject.transform.localScale = transsform;
+                    //CreateDust();
                 }
                 facingRight = true;
             }
@@ -147,6 +157,7 @@ public class PlayerMovement : MonoBehaviour
                     Vector3 transsform = spriteObject.transform.localScale;
                     transsform.x *= -1;
                     spriteObject.transform.localScale = transsform;
+                    //CreateDust();
                 }
                 facingRight = false;
             }
@@ -182,20 +193,27 @@ public class PlayerMovement : MonoBehaviour
     #region States
     private void StateHandler() //manages which state should be active.
     {
-        if (grounded && rb.velocity.x == 0) currentState = State.Idle;
-        if (grounded && rb.velocity.x != 0 && inputHorizontal != 0) currentState = State.Walking;
-        if (!grounded && isJumping) currentState = State.Jumping;
-        if (!grounded && !isJumping && isWallJumping) currentState = State.Walljumping;
-        if (!grounded && !isJumping && rb.velocity.y < 0) currentState = State.Falling;
-        if (CanGrab() && !isJumping && !isWallJumping && !grounded && rb.velocity.y < 0) currentState = State.SlidingDown; isSlidingDown = true;
+        if (!isAttacking) // attacking locks movement and such, the other states should not run until player is done attacking.
+        {
+            if (grounded) currentState = State.Idle;
+            if (grounded && rb.velocity.x != 0 && inputHorizontal != 0) currentState = State.Walking;
+            if (!grounded && isJumping) currentState = State.Jumping;
+            if (!grounded && !isJumping && isWallJumping) currentState = State.Walljumping;
+            if (!grounded && !isJumping && rb.velocity.y < 0) currentState = State.Falling;
+            if ( CanGrab() && !isGrabbing  && !isJumping && !isWallJumping && !grounded && rb.velocity.y < 0) currentState = State.SlidingDown; isSlidingDown = true;
+            if( CanGrab() && isGrabbing) currentState = State.Grabbing;
+            if(isGrabbing && isWallJumping) currentState = State.Walljumping;
+        }
+        if (isAttacking && !CanGrab()) currentState = State.Attacking;
     }
+
 
     private void StateEffects()
     {
         switch (currentState)
         {
             case State.General:
-                regensEnergy = true;
+                regensEnergy = false;
                 break;
             case State.Idle:
                 regensEnergy = true;
@@ -221,7 +239,10 @@ public class PlayerMovement : MonoBehaviour
                 break;
             case State.SlidingDown:
                 StartSlidingDown();
-                regensEnergy = true;
+                regensEnergy = false;
+                break;
+            case State.Attacking:
+                regensEnergy = false;
                 break;
         }
         if (currentState != State.SlidingDown) ResetGravityScale();
@@ -232,9 +253,9 @@ public class PlayerMovement : MonoBehaviour
     #region movement
     private void MovePlayer()
     {
-        if (currentState == State.Dashing || currentState == State.Grabbing)
+        if (currentState == State.Dashing || currentState == State.Grabbing || currentState == State.Attacking)
         {
-            //Handle the velocity somewhere else
+            //Handle the velocity somewhere else, or be doing nothing
         }
         else
         {
@@ -276,6 +297,10 @@ public class PlayerMovement : MonoBehaviour
                     rb.AddForce(pushDownVector * pushDownStrenght);
                 }
             }
+
+            //if player is attacking and in air, hold the last frame of the animation until grounded. 
+
+
         }
         #region olddd
         //rb.AddForce(inputVector * moveSpeed, ForceMode2D.Force);
@@ -290,6 +315,7 @@ public class PlayerMovement : MonoBehaviour
         #endregion
     }
 
+
     private Vector2 GetSlopeAngle()
     {
         RaycastHit2D rayHit = Physics2D.Raycast(transform.position, -transform.up, floorRayLength + 1f, jumpMask);
@@ -301,7 +327,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void CheckIfGrounded()
     {
-        Vector3 offset = new Vector3(.3f, 0, 0);
+        Vector3 offset = new Vector3(.45f, 0, 0);
         grounded = Physics2D.Raycast(transform.position, -transform.up, floorRayLength, jumpMask)
             || Physics2D.Raycast(transform.position + offset, -transform.up, floorRayLength, jumpMask)
             || Physics2D.Raycast(transform.position - offset, -transform.up, floorRayLength, jumpMask);
@@ -319,6 +345,21 @@ public class PlayerMovement : MonoBehaviour
     }
     #endregion
 
+    #region Attacking
+
+    private IEnumerator IAmAttacking()
+    {
+        if (!isAttacking)
+        {
+            isAttacking = true;
+            yield return new WaitForSeconds(.5f);
+            isAttacking = false;
+            currentState = State.General;
+        }
+    }
+    #endregion
+
+
     #region Jumping and walljumping
     private void Jump()
     {
@@ -331,17 +372,19 @@ public class PlayerMovement : MonoBehaviour
             energy.UseEnergy(jumpCost);
             //StartCoroutine(IsUsingEnergyAbility());
             StartCoroutine(JumpTime());
+            CreateDust();
         }
         else if (CanGrab())
         {
             WallJump();
+            CreateDust();
         }
     }
     [SerializeField] float jumpTimer;
     private IEnumerator JumpTime()// resets isJumping after .2f
     {
         yield return new WaitForSeconds(jumpTimer);
-        Debug.Log("Jump Timer Over!");
+        //Debug.Log("Jump Timer Over!");
         isJumping = false;
     }
 
@@ -349,7 +392,7 @@ public class PlayerMovement : MonoBehaviour
     {
         if (energy.energy > wallJumpCost)
         {
-            Vector2 jumpDirectionVector = ((transform.up * 2) + transform.right * wallDir * -1) / 3;
+            Vector2 jumpDirectionVector = ((transform.up *2) + transform.right * wallDir * -1) / 3;
             rb.AddForce(jumpDirectionVector * wallJumpForce, ForceMode2D.Impulse);
             energy.UseEnergy(wallJumpCost);
             //StartCoroutine(IsUsingEnergyAbility());
@@ -406,6 +449,10 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] GameObject hand2L;
     [SerializeField] GameObject hand3R;
     [SerializeField] GameObject hand4R;
+    //gloves visual indication.
+    [SerializeField] GameObject glove1;
+    [SerializeField] GameObject glove2;
+
     int wallDir = 0;
     //check for each of them if they can grab.
     private bool CanGrab()
@@ -429,18 +476,24 @@ public class PlayerMovement : MonoBehaviour
     {
         if (CanGrab())
         {
-            if (energy.energy > 10)
+            if (energy.energy > 1)
             {
+                //Debug.Log(energy.energy);
                 rb.velocity = Vector3.zero;
                 rb.gravityScale = 0.1f;
                 energy.UseEnergy(grabCost * Time.deltaTime);
+                isGrabbing = true;
                 currentState = State.Grabbing;
                 //StartCoroutine(IsUsingEnergyAbility());
+                if(wallDir < 0) glove1.SetActive(true);
+                if(wallDir > 0) glove2.SetActive(true);
 
             }
-            else rb.gravityScale = 3;
+            else if(energy.energy < 1) rb.gravityScale = 3; isGrabbing = false; Debug.Log("not grabbing cus low energy."); glove1.SetActive(false); glove2.SetActive(false);
+
         }
-        else rb.gravityScale = 3;
+        else if(!CanGrab()) rb.gravityScale = 3; isGrabbing = false; Debug.Log("not grab cus not cangrab"); glove1.SetActive(false); glove2.SetActive(false);
+
     }
 
     #endregion
@@ -459,6 +512,7 @@ public class PlayerMovement : MonoBehaviour
                 energy.UseEnergy(dashCost);
                 //StartCoroutine(IsUsingEnergyAbility());
                 StartCoroutine(DashTime());
+                CreateDashDust();
             }
         }
     }
@@ -480,6 +534,33 @@ public class PlayerMovement : MonoBehaviour
     {
         externalVelocityActive = true;
         rb.velocity = velocityExternal;
+    }
+
+    #endregion
+
+    #region AudioControl
+
+    private bool grabAudioIsPlaying;
+    private bool slideAudioIsPlaying;
+    private bool footStepAudioIsPlaying;
+
+    //Single shot audio:
+    //Jump, Dash, Hit floor, 
+
+    #endregion
+
+    #region Particles
+    [SerializeField] ParticleSystem dust;
+    [SerializeField] ParticleSystem dashDust;
+
+    private void CreateDust()
+    {
+        dust.Play();
+    }
+
+    private void CreateDashDust()
+    {
+        dashDust.Play();
     }
 
     #endregion
