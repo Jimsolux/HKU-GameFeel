@@ -13,6 +13,7 @@ public class PlayerAnim : MonoBehaviour
     private int idleHash;
     private int fallingHash;
     private int attackHash;
+    private int glideHash;
 
     private void Awake()
     {
@@ -25,6 +26,7 @@ public class PlayerAnim : MonoBehaviour
         idleHash = Animator.StringToHash("Anim_Idle");
         fallingHash = Animator.StringToHash("Anim_Fall");
         attackHash = Animator.StringToHash("Anim_Attack2");
+        glideHash = Animator.StringToHash("Anim_Glide");
     }
     private void FixedUpdate()
     {
@@ -68,6 +70,9 @@ public class PlayerAnim : MonoBehaviour
                     PlayAnimation(attackHash);
                     //Play the sword animation.
                     swordSlashScript.MoveSword();
+                    break;
+                case PlayerMovement.State.Gliding:
+                    PlayAnimation(glideHash);
                     break;
             }
             //Check the current state and set the right bool true.

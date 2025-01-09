@@ -10,9 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1074046236262120998}
   - component: {fileID: 3541971958551533059}
-  - component: {fileID: 6464408479582255837}
   - component: {fileID: 2975314452797640799}
-  - component: {fileID: 8557621010371353056}
   m_Layer: 0
   m_Name: Highlight item woa
   m_TagString: Untagged
@@ -87,22 +85,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &6464408479582255837
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2158802642495848693}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2047a4ec66bb0f44c9c5928e9afa1ddb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  cameraFollow: {fileID: 0}
-  player: {fileID: 0}
-  hasShown: 0
-  distanceToAdd: 25
 --- !u!60 &2975314452797640799
 PolygonCollider2D:
   m_ObjectHideFlags: 0
@@ -152,18 +134,3 @@ PolygonCollider2D:
       - {x: 0, y: -0.25}
       - {x: 0.5, y: 0}
   m_UseDelaunayMesh: 0
---- !u!114 &8557621010371353056
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2158802642495848693}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 874c48d6d7431454cbadd47ee4ef183b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  health: 10
-  maxHealth: 10
-  sprite: {fileID: 0}

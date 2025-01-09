@@ -1,11 +1,14 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering.Universal;
 
 public class PlayerMovement : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] Rigidbody2D rb;
     [SerializeField] Energy energy;
+    [SerializeField] PixelPerfectCamera ppc;
+    [SerializeField] GameObject forwardObjectToAdd;
     [Header("Movement Stats")]
     [SerializeField] float moveSpeed;
     [SerializeField] float jumpForce;
@@ -13,10 +16,15 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float maxHorizontalSpeed;
     [SerializeField] float acceleration;
     [SerializeField] float DashForce;
+    [SerializeField] float glideForce;
+    [SerializeField] float maxGlideSpeed;
+    [SerializeField] float glideAcceleration;
     [SerializeField] float pushDownStrenght;
     [SerializeField] bool grounded;
     [SerializeField] float slidingGravity;
     [SerializeField] float airDragMultiplier;
+    [SerializeField] float glideGravity;
+    [SerializeField] float glideDashForce;
     [Header("References Movement")]
     [SerializeField] LayerMask jumpMask;
     [SerializeField] float floorRayLength;
@@ -26,8 +34,9 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float wallJumpCost;
     [SerializeField] float jumpCost;
     [SerializeField] float grabCost;
+    [SerializeField] float glideCost;
 
-    [Header("public data")]
+    [Header("Public data")]
     [SerializeField] GameObject spriteObject;
     //Public data.
     public bool regensEnergy;
@@ -46,8 +55,10 @@ public class PlayerMovement : MonoBehaviour
     private bool isDashing;
     private bool isSlidingDown;
     private bool isAttacking;
-    [SerializeField] private bool isGrabbing;
+    private bool isGliding;
+    private bool isGrabbing;
     private float normalGravity = 3f;
+    [SerializeField] private bool isDashingFromGlide;
     public enum State
     {
         General,
@@ -59,13 +70,14 @@ public class PlayerMovement : MonoBehaviour
         Dashing,
         Grabbing,
         SlidingDown,
-        Attacking
+        Attacking,
+        Gliding
     }
     [SerializeField] public State currentState;
 
 
 
-    private void Start()
+    private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         energy = GetComponent<Energy>();
@@ -75,11 +87,13 @@ public class PlayerMovement : MonoBehaviour
     {
         //Order of execution in Update
         GetInput();// Get all player Input
+        PlayActiveAudio();
         CheckIfGrounded(); // Check player body conditions
         StateHandler(); //Switch between States depending on situation
         Flipping(); //Flip sprite
         MovePlayer(); // Move the player accordingly.
         StateEffects();
+
     }
 
     private void FixedUpdate()
@@ -110,26 +124,26 @@ public class PlayerMovement : MonoBehaviour
                 rb.AddForce((1f - 0.6f) * jumpShortForce * rb.velocity.y * Vector2.down, ForceMode2D.Impulse);
             }
         }
-        if (Input.GetKeyDown(KeyCode.LeftShift))
+        if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.RightShift))
         {
             Dash();
         }
-        if (Input.GetKey(KeyCode.C) || Input.GetMouseButton(1))
-        {
-            Grab();
-        }
-        if (Input.GetKeyUp(KeyCode.C) || Input.GetMouseButtonUp(1))
-        {
-            ResetGravityScale();
-            isGrabbing = false; glove1.SetActive(false); glove2.SetActive(false);
-            //Debug.Log("Not grab cus keyUp");
-        }
-        if (Input.GetMouseButtonDown(0)) // mouse L?
+
+        if (Input.GetKeyDown(KeyCode.P))
         {
             StartCoroutine(IAmAttacking());
         }
         //Object flipping
 
+        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.C) || Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.KeypadEnter))
+        {
+            StartGliding();
+        }
+        if (Input.GetKeyUp(KeyCode.Return) || Input.GetKeyUp(KeyCode.C) || Input.GetKeyUp(KeyCode.E) || Input.GetKeyUp(KeyCode.KeypadEnter))
+        {
+            StopGliding();
+            isDashingFromGlide = false;
+        }
     }
 
     #endregion
@@ -137,55 +151,60 @@ public class PlayerMovement : MonoBehaviour
     #region animation
     private void Flipping()
     {
-        if (currentState == State.SlidingDown || currentState == State.Grabbing)
-        {
-            if (wallDir < 0 && inputHorizontal < 0)//wall on left - face right.
+        //if (currentState != State.Gliding) // Cant flip if gliding.
+        //{
+            if (currentState == State.SlidingDown || currentState == State.Grabbing)
             {
-                if (!facingRight)
+                if (wallDir < 0 && inputHorizontal < 0)//wall on left - face right.
                 {
-                    Vector3 transsform = spriteObject.transform.localScale;
-                    transsform.x *= -1;
-                    spriteObject.transform.localScale = transsform;
-                    //CreateDust();
+                    if (!facingRight)
+                    {
+                        Vector3 transsform = spriteObject.transform.localScale;
+                        transsform.x *= -1;
+                        spriteObject.transform.localScale = transsform;
+                        //CreateDust();
+                    }
+                    facingRight = true;
                 }
-                facingRight = true;
+                if (wallDir > 0 && inputHorizontal > 0)//wall on right - face left.
+                {
+                    if (facingRight)
+                    {
+                        Vector3 transsform = spriteObject.transform.localScale;
+                        transsform.x *= -1;
+                        spriteObject.transform.localScale = transsform;
+                        //CreateDust();
+                    }
+                    facingRight = false;
+                }
             }
-            if (wallDir > 0 && inputHorizontal > 0)//wall on right - face left.
+            else
             {
-                if (facingRight)
+                if (inputHorizontal > 0)
                 {
-                    Vector3 transsform = spriteObject.transform.localScale;
-                    transsform.x *= -1;
-                    spriteObject.transform.localScale = transsform;
-                    //CreateDust();
+                    if (!facingRight)
+                    {
+                        Vector3 transsform = spriteObject.transform.localScale;
+                        transsform.x *= -1;
+                        spriteObject.transform.localScale = transsform;
+                    CreateDust();
+                    }
+                    facingRight = true;
                 }
-                facingRight = false;
-            }
-        }
-        else
-        {
-            if (inputHorizontal > 0)
-            {
-                if (!facingRight)
+                if (inputHorizontal < 0)
                 {
-                    Vector3 transsform = spriteObject.transform.localScale;
-                    transsform.x *= -1;
-                    spriteObject.transform.localScale = transsform;
+                    if (facingRight)
+                    {
+                        Vector3 transsform = spriteObject.transform.localScale;
+                        transsform.x *= -1;
+                        spriteObject.transform.localScale = transsform;
+                    CreateDust();
+                    }
+                    facingRight = false;
                 }
-                facingRight = true;
-            }
-            if (inputHorizontal < 0)
-            {
-                if (facingRight)
-                {
-                    Vector3 transsform = spriteObject.transform.localScale;
-                    transsform.x *= -1;
-                    spriteObject.transform.localScale = transsform;
-                }
-                facingRight = false;
-            }
 
-        }
+            }
+        //}
 
     }
     #endregion
@@ -200,9 +219,11 @@ public class PlayerMovement : MonoBehaviour
             if (!grounded && isJumping) currentState = State.Jumping;
             if (!grounded && !isJumping && isWallJumping) currentState = State.Walljumping;
             if (!grounded && !isJumping && rb.velocity.y < 0) currentState = State.Falling;
-            if ( CanGrab() && !isGrabbing  && !isJumping && !isWallJumping && !grounded && rb.velocity.y < 0) currentState = State.SlidingDown; isSlidingDown = true;
-            if( CanGrab() && isGrabbing) currentState = State.Grabbing;
-            if(isGrabbing && isWallJumping) currentState = State.Walljumping;
+            if (CanGrab() && !isGrabbing && !isJumping && !isWallJumping && !grounded && rb.velocity.y < 0) currentState = State.SlidingDown; isSlidingDown = true;
+            if (CanGrab() && isGrabbing) currentState = State.Grabbing;
+            if (isGrabbing && isWallJumping) currentState = State.Walljumping;
+            if (!grounded && isGliding &&!CanGrab() && !isDashingFromGlide) currentState = State.Gliding;
+            if(!grounded && isDashing) currentState = State.Dashing;
         }
         if (isAttacking && !CanGrab()) currentState = State.Attacking;
     }
@@ -239,21 +260,29 @@ public class PlayerMovement : MonoBehaviour
                 break;
             case State.SlidingDown:
                 StartSlidingDown();
+                CreateDust();
+
                 regensEnergy = false;
                 break;
             case State.Attacking:
                 regensEnergy = false;
                 break;
+            case State.Gliding:
+                GlidingBehaviour();
+                regensEnergy = false;
+                break;
         }
-        if (currentState != State.SlidingDown) ResetGravityScale();
+        if (currentState != State.SlidingDown && currentState != State.Gliding) ResetGravityScale();
     }
+
+
 
     #endregion
 
     #region movement
     private void MovePlayer()
     {
-        if (currentState == State.Dashing || currentState == State.Grabbing || currentState == State.Attacking)
+        if (currentState == State.Dashing || currentState == State.Grabbing || currentState == State.Attacking || currentState == State.Gliding)
         {
             //Handle the velocity somewhere else, or be doing nothing
         }
@@ -294,7 +323,7 @@ public class PlayerMovement : MonoBehaviour
                 {
                     //Debug.Log(" I'm on a slope: ");
                     Vector2 pushDownVector = new Vector2(movementVector.x * -1, movementVector.y * -1);
-                    rb.AddForce(pushDownVector * pushDownStrenght);
+                    rb.AddForce(pushDownVector * pushDownStrenght * Time.deltaTime);
                 }
             }
 
@@ -373,10 +402,12 @@ public class PlayerMovement : MonoBehaviour
             //StartCoroutine(IsUsingEnergyAbility());
             StartCoroutine(JumpTime());
             CreateDust();
+            AudioManager.instance.PlaySFX("Jump");
         }
         else if (CanGrab())
         {
             WallJump();
+            AudioManager.instance.PlaySFX("Jump");
             CreateDust();
         }
     }
@@ -390,9 +421,9 @@ public class PlayerMovement : MonoBehaviour
 
     private void WallJump()
     {
-        if (energy.energy > wallJumpCost)
+        if (energy.energy > wallJumpCost && !isDashing)
         {
-            Vector2 jumpDirectionVector = ((transform.up *2) + transform.right * wallDir * -1) / 3;
+            Vector2 jumpDirectionVector = ((transform.up * 1.5f) + transform.right * wallDir * -1) / 2.5f;
             rb.AddForce(jumpDirectionVector * wallJumpForce, ForceMode2D.Impulse);
             energy.UseEnergy(wallJumpCost);
             //StartCoroutine(IsUsingEnergyAbility());
@@ -429,15 +460,27 @@ public class PlayerMovement : MonoBehaviour
 
     private void ResetGravityScale()
     {
-        if (rb.gravityScale != normalGravity)
+        if (rb.gravityScale != normalGravity && currentState != State.Gliding)
         {
             rb.gravityScale = normalGravity;
+            Debug.Log("reset gravity scale");
         }
     }
     private void StartSlidingDown()
     {
         //Change the rb.gravityscale down
-        if (rb.gravityScale != slidingGravity) rb.gravityScale = slidingGravity;
+        if (currentState != State.Gliding)
+        {
+            if (rb.gravityScale != slidingGravity) rb.gravityScale = slidingGravity;
+        }
+    }
+
+    private void SetGlidingGravity()
+    {
+        if (rb.gravityScale != glideGravity)
+        {
+            rb.gravityScale = glideGravity;
+        }
     }
 
     #endregion
@@ -478,21 +521,19 @@ public class PlayerMovement : MonoBehaviour
         {
             if (energy.energy > 1)
             {
-                //Debug.Log(energy.energy);
-                rb.velocity = Vector3.zero;
-                rb.gravityScale = 0.1f;
-                energy.UseEnergy(grabCost * Time.deltaTime);
-                isGrabbing = true;
-                currentState = State.Grabbing;
-                //StartCoroutine(IsUsingEnergyAbility());
-                if(wallDir < 0) glove1.SetActive(true);
-                if(wallDir > 0) glove2.SetActive(true);
+                //rb.velocity = Vector3.zero;
+                //rb.gravityScale = 0.1f;
+                //energy.UseEnergy(grabCost * Time.deltaTime);
+                //isGrabbing = true;
+                //currentState = State.Grabbing;
+                //if(wallDir < 0) glove1.SetActive(true);
+                //if(wallDir > 0) glove2.SetActive(true);
 
             }
-            else if(energy.energy < 1) rb.gravityScale = 3; isGrabbing = false; Debug.Log("not grabbing cus low energy."); glove1.SetActive(false); glove2.SetActive(false);
+            else if (energy.energy < 1) rb.gravityScale = 3; isGrabbing = false; Debug.Log("not grabbing cus low energy."); glove1.SetActive(false); glove2.SetActive(false);
 
         }
-        else if(!CanGrab()) rb.gravityScale = 3; isGrabbing = false; Debug.Log("not grab cus not cangrab"); glove1.SetActive(false); glove2.SetActive(false);
+        else if (!CanGrab()) rb.gravityScale = 3; isGrabbing = false; Debug.Log("not grab cus not cangrab"); glove1.SetActive(false); glove2.SetActive(false);
 
     }
 
@@ -504,15 +545,52 @@ public class PlayerMovement : MonoBehaviour
     {
         if (energy.energy >= dashCost)
         {
-            if (fullInputVector != Vector3.zero)//only dash when you have a direction.
+            if (fullInputVector != Vector3.zero || rb.velocity != Vector2.zero)//only dash when you have a direction.
             {
-                currentState = State.Dashing;
+                
                 isDashing = true;
-                rb.AddForce(fullInputVector.normalized * DashForce, ForceMode2D.Impulse);
+                if(currentState != State.Gliding)   //if im not gliding
+                {
+                    if (fullInputVector != Vector3.zero)
+                    {
+                        rb.velocity = Vector2.zero;
+                        rb.AddForce(fullInputVector.normalized * DashForce, ForceMode2D.Impulse);
+                    }
+                    else if (fullInputVector == Vector3.zero)
+                    {
+                        rb.velocity = Vector2.zero;
+                        rb.AddForce(rb.velocity.normalized * DashForce, ForceMode2D.Impulse);
+
+                    }
+                }
+                else if (currentState == State.Gliding) //if im  not gliding again??
+                {
+                    if (fullInputVector != Vector3.zero)
+                    {
+                        Debug.Log("IsDashingFromGlideNow");
+                        StopGliding();
+                        rb.velocity = Vector2.zero;
+                        rb.AddForce(fullInputVector.normalized * DashForce, ForceMode2D.Impulse);
+                        isDashingFromGlide = true;
+
+                    }
+                    else if (fullInputVector == Vector3.zero)
+                    {
+                        Debug.Log("IsDashingFromGlideNow");
+                        StopGliding();
+                        rb.velocity = Vector2.zero;
+
+                        rb.AddForce(rb.velocity.normalized * DashForce, ForceMode2D.Impulse);
+                        isDashingFromGlide = true;
+                    }
+                    StopGliding();
+                }
+                currentState = State.Dashing;
                 energy.UseEnergy(dashCost);
                 //StartCoroutine(IsUsingEnergyAbility());
                 StartCoroutine(DashTime());
                 CreateDashDust();
+                AudioManager.instance.PlayDash("Dash");
             }
         }
     }
@@ -525,6 +603,132 @@ public class PlayerMovement : MonoBehaviour
         currentState = State.General;//back to base state empty
     }
 
+    #endregion
+
+    #region Gliding
+
+    private void StartGliding()
+    {
+        if (!grounded && !isDashing && !isWallJumping && !isDashingFromGlide)
+        {
+            if (!isGliding) isGliding = true;
+            currentState = State.Gliding;
+            SetGlidingGravity();
+            StartCoroutine(AccelerateGliding());
+            //Check for high velocity down, make it smaller.
+            Debug.Log("Yo im gliding now!" );
+            if (rb.velocity.y < -4)
+            {
+                float maxDownVelocity = -4;
+                Vector2 v2 = new Vector2(rb.velocity.x, maxDownVelocity);
+                rb.velocity = v2;
+            }
+            //currentZoom = normalZoom;
+            AddForwardObjectToCamera();
+            CreateGlideDust();
+
+            //make the zoom softer by introducing a camera scaling?
+            //StartCoroutine(GlidingZoomOut());
+        }
+    }
+
+    private void GlidingBehaviour()
+    {
+        if (!isGliding) isGliding = true;
+        //Low gravityscale
+
+        //Push player forward in forward direction.
+        Vector2 forward = Vector2.right;
+        if (facingRight) forward = Vector2.right;
+        else if (!facingRight) forward = Vector2.left;
+        CreateGlideDust();
+
+        if (Input.GetAxisRaw("Horizontal") != 0)
+        {
+            rb.AddForce(forward * glideForce * Time.deltaTime, ForceMode2D.Impulse);
+        }
+    }
+
+    private void StopGliding()
+    {
+        
+        isGliding = false;
+        currentState = State.General;
+        //reset gravityscale and remove forward push if still there.
+        ResetGravityScale();
+        //Stop Sounds
+
+        //Stop zoom
+        RemoveForwardObjectFromCamera();
+        StopCoroutine(GlidingZoomOut());
+        //ppc.assetsPPU = normalZoom;
+
+    }
+    private IEnumerator AccelerateGliding()
+    {
+        if (!isGliding && currentState != State.Gliding)
+        {
+            StopCoroutine(AccelerateGliding());
+            glideForce = 500;
+        }
+        else if (currentState == State.Gliding && isGliding)
+        {
+            if (glideForce < maxGlideSpeed)
+            {
+                glideForce = Mathf.Lerp(glideForce, maxGlideSpeed, glideAcceleration * Time.deltaTime);
+                yield return null; //next frame
+            }
+            if (Mathf.Abs(rb.velocity.x) < .2f) glideForce = 500;
+            yield return null;
+            StartCoroutine(AccelerateGliding());//Replays itself as long as I am gliding.
+            //Debug.Log("Accelerating glidingspeed");
+        }
+    }
+
+    private void AddForwardObjectToCamera()
+    {
+        CameraFollow cf = Camera.main.GetComponent<CameraFollow>();
+        if (!cf.objectsToFollow.Contains(forwardObjectToAdd))
+        {
+            cf.objectsToFollow.Add(forwardObjectToAdd);
+        }
+    }
+
+    private void RemoveForwardObjectFromCamera()
+    {
+        CameraFollow cf = Camera.main.GetComponent<CameraFollow>();
+        if (cf.objectsToFollow.Contains(forwardObjectToAdd))
+        {
+            cf.objectsToFollow.Remove(forwardObjectToAdd);
+        }
+    }
+
+
+    int normalZoom = 40;
+    int wideZoom = 45;
+    int currentZoom;
+    private IEnumerator GlidingZoomOut()
+    {
+
+        if (!isGliding && currentState != State.Gliding)//Stop gliding
+        {
+            StopCoroutine(GlidingZoomOut());
+            //ppc.assetsPPU = normalZoom;
+
+        }
+        else if (currentState == State.Gliding && isGliding)
+        {
+            if (currentZoom > wideZoom)
+            {
+                currentZoom--;
+                ppc.assetsPPU = currentZoom;
+                //Debug.Log(ppc.assetsPPU);
+                yield return new WaitForSeconds(0.1f);//every .2 seconds, zoom out a little
+
+                StartCoroutine(GlidingZoomOut()); // loop self
+            }
+        }
+    }
     #endregion
 
     #region external Velocity
@@ -543,7 +747,71 @@ public class PlayerMovement : MonoBehaviour
     private bool grabAudioIsPlaying;
     private bool slideAudioIsPlaying;
     private bool footStepAudioIsPlaying;
+    private bool dashAudioIsPLaying;
+    private bool glideAudioIsPlaying;
 
+
+    private AudioClip footsteps;
+    private AudioClip dashSound;
+    private AudioClip glideSound;
+    private AudioClip jumpSound;
+    private AudioClip landSound;
+
+    State lastKnownState;
+    private void PlayActiveAudio()
+    {
+        if (lastKnownState != currentState)
+        {
+            switch (currentState)
+            {
+                case State.General:
+                    AudioManager.instance.PlayPlayerSounds("Silence");
+
+                    break;
+                case State.Idle:
+                    AudioManager.instance.PlayPlayerSounds("Silence");
+
+                    break;
+                case State.Walking:
+                    AudioManager.instance.PlayPlayerSounds("Walk");
+                    break;
+                case State.Jumping:
+                    AudioManager.instance.PlayPlayerSounds("Silence");
+
+                    break;
+                case State.Walljumping:
+                    AudioManager.instance.PlayPlayerSounds("Silence");
+
+                    break;
+                case State.Falling:
+                    AudioManager.instance.PlayPlayerSounds("Silence");
+
+                    break;
+                case State.Dashing:
+                    AudioManager.instance.PlayPlayerSounds("Glide");
+
+                    break;
+                case State.Grabbing:
+                    AudioManager.instance.PlayPlayerSounds("Slide");
+
+                    break;
+                case State.SlidingDown:
+                    AudioManager.instance.PlayPlayerSounds("Slide");
+
+                    break;
+                case State.Attacking:
+                    AudioManager.instance.PlayPlayerSounds("Silence");
+
+                    break;
+                case State.Gliding:
+                    AudioManager.instance.PlayPlayerSounds("Glide");
+
+                    break;
+
+            }
+        }
+                lastKnownState = currentState;
+    }
     //Single shot audio:
     //Jump, Dash, Hit floor, 
 
@@ -552,6 +820,7 @@ public class PlayerMovement : MonoBehaviour
     #region Particles
     [SerializeField] ParticleSystem dust;
     [SerializeField] ParticleSystem dashDust;
+    [SerializeField] ParticleSystem glideDust;
 
     private void CreateDust()
     {
@@ -561,6 +830,11 @@ public class PlayerMovement : MonoBehaviour
     private void CreateDashDust()
     {
         dashDust.Play();
+    }
+
+    private void CreateGlideDust()
+    {
+        glideDust.Play();
     }
 
     #endregion

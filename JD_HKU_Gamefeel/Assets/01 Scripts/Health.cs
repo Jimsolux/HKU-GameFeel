@@ -9,9 +9,11 @@ public class Health : MonoBehaviour
     [SerializeField] private float maxHealth;
     [SerializeField] private SpriteRenderer sprite;
     Color oldColor;
+    CheckPointSystem cps;
 
     private void Awake()
     {
+        cps = GetComponent<CheckPointSystem>();
         health = maxHealth;
         sprite = GetComponentInChildren<SpriteRenderer>();
         oldColor = sprite.color;
@@ -22,7 +24,12 @@ public class Health : MonoBehaviour
     {
         if (health <= 0)
         {
-            gameObject.SetActive(false);
+            if (cps != null)
+            {
+                cps.Respawn();
+                
+            }
+            //gameObject.SetActive(false);
         }
         if (health > maxHealth)
         {
@@ -32,7 +39,7 @@ public class Health : MonoBehaviour
 
     public void GainHealth(float value) { health += value; CheckHealth(); }
 
-    public void TakeDamage(float value) { health -= value; CheckHealth(); StartCoroutine(FlashTextureRed()); }
+    public void TakeDamage(float value) { health -= value; CheckHealth(); StartCoroutine(FlashTextureRed()); AudioManager.instance.PlaySFX("Hurt"); }
 
 
     //Dmg Visualisation

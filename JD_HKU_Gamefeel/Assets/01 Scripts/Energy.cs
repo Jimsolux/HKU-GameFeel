@@ -16,7 +16,7 @@ public class Energy : MonoBehaviour
         ResetEnergy();
         //InvokeRepeating("RestoreEnergy", 2, restoreTime);
     }
-    private void ResetEnergy()
+    public void ResetEnergy()
     {
         energy = maxEnergy;
         UpdateEnergy();
@@ -63,7 +63,7 @@ public class Energy : MonoBehaviour
         if (!oneCoroutineIsActive)
         {
             oneCoroutineIsActive = true;
-            yield return new WaitForSeconds(3);
+            yield return new WaitForSeconds(1);
             InvokeRepeating("RestoreEnergy", 0, restoreTime);
             oneCoroutineIsActive = false;
         }
@@ -86,7 +86,7 @@ public class Energy : MonoBehaviour
 
     private IEnumerator StartChangingStaminaOpacity()
     {
-        yield return new WaitForSeconds(1);
+        yield return new WaitForSeconds(0.3f);
         Color color = energyImage.color;
         float visibilityFloat = energyImage.fillAmount * -1 + 1;
         
