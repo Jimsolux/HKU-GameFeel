@@ -114,7 +114,6 @@ public class PlayerMovement : MonoBehaviour
         inputVector = new Vector3(inputHorizontal, 0);
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            //Debug.Log("Spacebar registered, should jump xxx");
             Jump();
         }
         if (Input.GetKeyUp(KeyCode.Space))
@@ -233,44 +232,22 @@ public class PlayerMovement : MonoBehaviour
     {
         switch (currentState)
         {
-            case State.General:
-                regensEnergy = false;
-                break;
             case State.Idle:
                 regensEnergy = true;
                 break;
             case State.Walking:
                 regensEnergy = true;
                 break;
-            case State.Jumping:
-                regensEnergy = false;
-                break;
-            case State.Walljumping:
-                regensEnergy = false;
-                break;
-            case State.Falling:
-                regensEnergy = false;
-                //Accelerate fallspeed.
-                break;
-            case State.Dashing:
-                regensEnergy = false;
-                break;
-            case State.Grabbing:
-                regensEnergy = false;
-                break;
             case State.SlidingDown:
                 StartSlidingDown();
                 CreateDust();
-
-                regensEnergy = false;
-                break;
-            case State.Attacking:
                 regensEnergy = false;
                 break;
             case State.Gliding:
                 GlidingBehaviour();
                 regensEnergy = false;
                 break;
+            default: regensEnergy = false; break;
         }
         if (currentState != State.SlidingDown && currentState != State.Gliding) ResetGravityScale();
     }
@@ -743,19 +720,6 @@ public class PlayerMovement : MonoBehaviour
     #endregion
 
     #region AudioControl
-
-    private bool grabAudioIsPlaying;
-    private bool slideAudioIsPlaying;
-    private bool footStepAudioIsPlaying;
-    private bool dashAudioIsPLaying;
-    private bool glideAudioIsPlaying;
-
-
-    private AudioClip footsteps;
-    private AudioClip dashSound;
-    private AudioClip glideSound;
-    private AudioClip jumpSound;
-    private AudioClip landSound;
 
     State lastKnownState;
     private void PlayActiveAudio()
