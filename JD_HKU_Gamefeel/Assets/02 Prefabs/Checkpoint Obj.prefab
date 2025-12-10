@@ -11,8 +11,9 @@ GameObject:
   - component: {fileID: 1074046236262120998}
   - component: {fileID: 3541971958551533059}
   - component: {fileID: 2975314452797640799}
+  - component: {fileID: 1464075141224052853}
   m_Layer: 0
-  m_Name: Highlight item woa
+  m_Name: Checkpoint Obj
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -75,7 +76,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_Sprite: {fileID: 3625043607559282579, guid: 19fb86013d8c24d6cb8410c0aadf30fa, type: 3}
-  m_Color: {r: 0.9529412, g: 0.41790912, b: 0.32941175, a: 1}
+  m_Color: {r: 1, g: 0.64705884, b: 0.68235296, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -114,7 +115,7 @@ PolygonCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_UsedByEffector: 0
   m_UsedByComposite: 0
   m_Offset: {x: 0, y: 0}
@@ -134,3 +135,16 @@ PolygonCollider2D:
       - {x: 0, y: -0.25}
       - {x: 0.5, y: 0}
   m_UseDelaunayMesh: 0
+--- !u!114 &1464075141224052853
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2158802642495848693}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a0faef0df99435459eed56ea7715df0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  checkPointValue: 0
